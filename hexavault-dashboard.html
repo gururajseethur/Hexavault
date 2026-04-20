@@ -1,0 +1,2398 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HEXAVAULT | Mission Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --primary: #e8ff00;
+            --secondary: #00ff88;
+            --background: #0a0a0a;
+            --panel: rgba(15, 15, 15, 0.85);
+            --border: rgba(232, 255, 0, 0.2);
+            --text: #e0e0e0;
+            --muted: #666666;
+            --danger: #ff3b3b;
+            --header-font: "Space Mono", monospace;
+            --body-font: "Inter", sans-serif;
+            --scanner-opacity: 0.15;
+            --glass-bg: rgba(10, 10, 10, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: crosshair !important;
+            border-radius: 0 !important;
+        }
+
+        body,
+        html {
+            height: 100%;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--body-font);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+        #signal-sweep {
+            position: fixed;
+            top: -100px;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, rgba(232, 255, 0, 0.05), transparent);
+            z-index: 9999;
+            pointer-events: none;
+            animation: signalSweep 8s linear infinite;
+        }
+
+        @keyframes signalSweep {
+            0% {
+                top: -100px;
+            }
+
+            100% {
+                top: 100vh;
+            }
+        }
+
+
+        #bg-matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -10;
+            opacity: 0.4;
+        }
+
+        #radar-sweep {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            margin-top: -400px;
+            margin-left: -400px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(232, 255, 0, 0.05) 100%);
+            animation: radar 3s linear infinite;
+            z-index: -5;
+            pointer-events: none;
+        }
+
+        @keyframes radar {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+                text-shadow: none;
+            }
+
+            20% {
+                transform: translate(-2px, 1px);
+                text-shadow: 2px 0 rgba(255, 59, 59, 0.8), -2px 0 rgba(0, 255, 136, 0.8);
+            }
+
+            40% {
+                transform: translate(-1px, -1px);
+                text-shadow: -1px 0 rgba(255, 59, 59, 0.8), 1px 0 rgba(0, 255, 136, 0.8);
+            }
+
+            60% {
+                transform: translate(2px, 1px);
+                text-shadow: 2px 0 rgba(255, 59, 59, 0.8), -2px 0 rgba(0, 255, 136, 0.8);
+            }
+
+            80% {
+                transform: translate(1px, -1px);
+                text-shadow: -1px 0 rgba(255, 59, 59, 0.8), 1px 0 rgba(0, 255, 136, 0.8);
+            }
+
+            100% {
+                transform: translate(0);
+                text-shadow: none;
+            }
+        }
+
+
+        /* --- GRID SHELL --- */
+        .mission-control-root {
+            display: grid;
+            grid-template-areas:
+                "topbar topbar"
+                "sidebar main";
+            grid-template-columns: 64px 1fr;
+            grid-template-rows: 52px 1fr;
+            height: 100vh;
+            width: 100vw;
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* --- TOP BAR --- */
+        header {
+            grid-area: topbar;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .logo-section {
+            font-family: var(--header-font);
+            font-weight: bold;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--secondary);
+        }
+
+        .logo-section:hover,
+        .view-header:hover {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+        }
+
+        @keyframes hexPulse {
+            0% {
+                filter: drop-shadow(0 0 2px var(--primary));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 10px var(--primary));
+                transform: scale(1.05);
+            }
+
+            100% {
+                filter: drop-shadow(0 0 2px var(--primary));
+            }
+        }
+
+        .logo-hexa {
+            position: relative;
+            display: inline-block;
+            color: var(--primary);
+            font-size: 20px;
+            animation: hexPulse 3s infinite ease-in-out;
+        }
+
+        .logo-hexa::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            margin-top: -15px;
+            margin-left: -15px;
+            border: 1px dashed var(--primary);
+            border-radius: 50%;
+            animation: radar 5s linear infinite;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .logo-hexa::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 36px;
+            height: 36px;
+            margin-top: -18px;
+            margin-left: -18px;
+            border: 1px dotted var(--primary);
+            border-radius: 50%;
+            animation: radar 8s linear infinite reverse;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .system-time {
+            font-family: var(--header-font);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* --- SIDEBAR --- */
+        nav {
+            grid-area: sidebar;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 25px;
+        }
+
+        .nav-item {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            transition: 0.2s ease;
+            position: relative;
+            font-size: 16px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary);
+        }
+
+        .nav-item.active::before {
+            content: "";
+            position: absolute;
+            left: -16px;
+            width: 2px;
+            height: 20px;
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        /* --- MAIN CONTENT --- */
+        main {
+            grid-area: main;
+            padding: 24px;
+            overflow-y: auto;
+            position: relative;
+            padding-bottom: 60px;
+        }
+
+        .page {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            animation: deploy 0.4s ease forwards;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        .view-header {
+            font-family: var(--header-font);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .view-header::after {
+            content: "";
+            height: 1px;
+            flex-grow: 1;
+            background: var(--border);
+        }
+
+        /* --- COMPONENTS --- */
+        .status-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .status-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+            position: relative;
+            transition: border 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .status-card:hover {
+            border-color: rgba(232, 255, 0, 0.5);
+            box-shadow: inset 0 0 10px rgba(232, 255, 0, 0.05), 0 0 15px rgba(232, 255, 0, 0.1);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--header-font);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .status-val {
+            font-family: var(--header-font);
+            font-size: 20px;
+            color: var(--text);
+        }
+
+        .sparkline {
+            width: 100px;
+            height: 24px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 16px;
+            clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+            position: relative;
+            transition: transform 0.5s var(--ease-tactical), border 0.3s ease, box-shadow 0.3s ease;
+            transform-style: preserve-3d;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+            /* Recessed effect */
+        }
+
+        .card:hover {
+            transform: translateZ(20px) scale(1.02);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(232, 255, 0, 0.2);
+            z-index: 10;
+        }
+
+
+        .card:hover {
+            border-color: rgba(232, 255, 0, 0.5);
+            box-shadow:
+                inset 0 0 10px rgba(232, 255, 0, 0.05),
+                0 0 15px rgba(232, 255, 0, 0.1);
+        }
+
+        .service-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-online {
+            background: var(--success);
+            box-shadow: 0 0 5px var(--success);
+        }
+
+        .dot-offline {
+            background: var(--danger);
+            box-shadow: 0 0 5px var(--danger);
+        }
+
+        /* Data Flow Pipeline */
+        .pipeline-container {
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            padding: 32px;
+            position: relative;
+        }
+
+        .pipeline-title {
+            font-family: var(--header-font);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 32px;
+            letter-spacing: 2px;
+        }
+
+        .pipeline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .pipe-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: var(--border);
+            z-index: 1;
+        }
+
+        .node {
+            background-color: var(--surface);
+            border: 1px solid var(--primary);
+            padding: 12px 24px;
+            font-family: var(--header-font);
+            font-size: 12px;
+            color: var(--primary);
+            z-index: 2;
+            position: relative;
+        }
+
+        /* Pulse Animation */
+        .packet {
+            position: absolute;
+            top: calc(50% - 2px);
+            left: 0;
+            width: 4px;
+            height: 4px;
+            background-color: var(--primary);
+            z-index: 3;
+            opacity: 0;
+        }
+
+        .packet-1 {
+            animation: pulseMove 3s infinite linear;
+        }
+
+        .packet-2 {
+            animation: pulseMove 3s infinite linear 1s;
+        }
+
+        .packet-3 {
+            animation: pulseMove 3s infinite linear 2s;
+        }
+
+        @keyframes pulseMove {
+            0% {
+                left: 0;
+                opacity: 1;
+            }
+
+            95% {
+                left: 100%;
+                opacity: 1;
+            }
+
+            100% {
+                left: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* --- TERMINAL DRAWER --- */
+        #terminal-drawer {
+            position: fixed;
+            bottom: -250px;
+            left: 64px;
+            right: 0;
+            height: 250px;
+            background: #050505;
+            border-top: 1px solid var(--primary);
+            transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 15px;
+            font-family: var(--header-font);
+            font-size: 11px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #terminal-drawer.open {
+            bottom: 0;
+        }
+
+        .log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .log-entry {
+            color: #666;
+        }
+
+        .log-entry.ok {
+            color: var(--success);
+        }
+
+        .log-entry.sys {
+            color: var(--primary);
+        }
+
+        .terminal-input-row {
+            display: flex;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px solid #222;
+        }
+
+        .terminal-prompt {
+            color: var(--primary);
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: var(--header-font);
+            font-size: 11px;
+            width: 100%;
+            outline: none;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes deploy {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- COMMAND OP CHIP --- */
+        .op-chip {
+            padding: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+            font-family: var(--header-font);
+            font-size: 11px;
+            color: var(--text);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .op-chip:hover {
+            background: rgba(232, 255, 0, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* --- ULTRA-THIN SCROLLBARS --- */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+
+        /* --- KITT SCANNER (Command Thinking) --- */
+        @keyframes kitt {
+            0% {
+                left: -100px;
+                width: 100px;
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                left: 100%;
+                width: 100px;
+                opacity: 0;
+            }
+        }
+
+        .kitt-scanner {
+            height: 2px;
+            background: var(--primary);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            animation: kitt 1.5s ease-in-out infinite;
+            box-shadow:
+                0 0 10px var(--primary),
+                0 0 20px rgba(232, 255, 0, 0.6);
+            z-index: 5;
+        }
+
+        /* --- SYSTEM OFFLINE MODE --- */
+        @keyframes dangerPulse {
+            0% {
+                box-shadow: inset 0 0 0px var(--danger);
+            }
+
+            50% {
+                box-shadow: inset 0 0 50px rgba(255, 59, 59, 0.3);
+            }
+
+            100% {
+                box-shadow: inset 0 0 0px var(--danger);
+            }
+        }
+
+        body.system-offline-pulse .mission-control-root {
+            animation: dangerPulse 2s infinite ease-in-out;
+        }
+
+        body.system-offline .mission-control-root {
+            filter: saturate(0.3) brightness(0.7) contrast(1.2);
+            transition: filter 0.6s ease;
+        }
+
+        body.system-offline .mission-control-root header,
+        body.system-offline .mission-control-root nav {
+            filter: saturate(1) brightness(1);
+        }
+
+        #offline-banner {
+            display: none;
+            position: fixed;
+            top: 52px;
+            left: 64px;
+            right: 0;
+            height: 28px;
+            background: rgba(255, 59, 59, 0.15);
+            border-bottom: 1px solid var(--danger);
+            z-index: 999;
+            font-family: var(--header-font);
+            font-size: 10px;
+            color: var(--danger);
+            text-align: center;
+            line-height: 28px;
+            letter-spacing: 2px;
+        }
+
+        body.system-offline #offline-banner {
+            display: block;
+        }
+
+        /* --- LOG PILLS (global) --- */
+        .log-pill {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            font-family: var(--header-font);
+            font-size: 10px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--muted);
+        }
+
+        .log-pill:hover,
+        .log-pill.active {
+            border-color: var(--text);
+            color: var(--text);
+        }
+
+        /* --- HUD RINGS --- */
+        .hud-ring {
+            position: fixed;
+            pointer-events: none;
+            z-index: -2;
+            border: 1px solid rgba(232, 255, 0, 0.05);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ring-1 {
+            width: 400px;
+            height: 400px;
+            border-style: dashed;
+            animation: radar 20s linear infinite;
+        }
+
+        .ring-2 {
+            width: 600px;
+            height: 600px;
+            border-style: dotted;
+            animation: radar 40s linear infinite reverse;
+        }
+
+        .ring-3 {
+            width: 800px;
+            height: 800px;
+            border: 2px solid rgba(232, 255, 0, 0.02);
+        }
+    </style>
+</head>
+
+
+<body>
+    <!-- HUD BACKGROUND ELEMENTS -->
+    <canvas id="bg-matrix"></canvas>
+    <div id="radar-sweep"></div>
+    <div id="signal-sweep"></div>
+    <div class="hud-ring ring-1"></div>
+    <div class="hud-ring ring-2"></div>
+    <div class="hud-ring ring-3"></div>
+
+    <div id="offline-banner">
+        ⚠ SYSTEM_OFFLINE — ORCHESTRATOR HEARTBEAT LOST — CHECK PORT 8000
+    </div>
+
+    <div class="mission-control-root" id="root-shell">
+        <header>
+            <div class="logo-section">
+                <span class="logo-hexa">⬡</span> HEXAVAULT
+            </div>
+            <div class="system-time" id="clock">2026-04-20 16:00:00</div>
+        </header>
+
+        <nav>
+            <div class="nav-item active" data-target="overview" title="Overview">
+                ⊞
+            </div>
+            <div class="nav-item" data-target="agents" title="Agents">◈</div>
+            <div class="nav-item" data-target="models" title="Models">◉</div>
+            <div class="nav-item" data-target="keys" title="Keys">⌗</div>
+            <div class="nav-item" data-target="logs" title="Logs">≡</div>
+            <div class="nav-item" data-target="nodes" title="Nodes">⬡</div>
+            <div class="nav-item" data-target="command" title="Command">>_</div>
+            <div style="flex-grow: 1"></div>
+            <div class="nav-item" data-target="settings" title="Settings">⚙</div>
+        </nav>
+
+        <main id="main-content">
+            <!-- OVERVIEW -->
+            <div id="overview" class="page active">
+                <div class="view-header">Overview</div>
+
+                <div class="status-strip">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span>RAM</span><span style="color: var(--primary)" id="txt-ram-pct">35%</span>
+                        </div>
+                        <div class="status-val" id="val-ram">11.4 GB</div>
+                        <canvas id="spark-ram" class="sparkline"></canvas>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span>DISK IO</span><span>24MB/s</span>
+                        </div>
+                        <div class="status-val" id="val-disk">842 IOPS</div>
+                        <canvas id="spark-disk" class="sparkline"></canvas>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span>UPTIME</span><span>SYS-01</span>
+                        </div>
+                        <div class="status-val" id="val-uptime">08:56:12</div>
+                        <canvas id="spark-uptime" class="sparkline"></canvas>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span>HEALTH</span><span style="color: var(--success)">NOMINAL</span>
+                        </div>
+                        <div class="status-val">100%</div>
+                        <canvas id="spark-health" class="sparkline"></canvas>
+                    </div>
+                </div>
+
+                <div class="pipeline-container">
+                    <div class="pipeline-title">// DATA FLOW TRAJECTORY</div>
+                    <div class="pipeline">
+                        <div class="pipe-line"></div>
+                        <div class="node">INTERNET</div>
+                        <div class="node">GATEWAY</div>
+                        <div class="node">OPENCLAW</div>
+                        <div class="node">LITELLM</div>
+                        <div class="node">OLLAMA</div>
+
+                        <div class="packet packet-1"></div>
+                        <div class="packet packet-2"></div>
+                        <div class="packet packet-3"></div>
+                    </div>
+                </div>
+
+                <div class="grid-layout" id="services-grid">
+                    <!-- Services rendered via JS -->
+                </div>
+            </div>
+
+            <!-- OTHER PAGES -->
+            <div id="agents" class="page"></div>
+            <div id="models" class="page">
+                <div class="view-header">Models</div>
+                <div style="color: var(--muted); font-family: var(--header-font)">
+                    Models module initializing...
+                </div>
+            </div>
+            <div id="keys" class="page"></div>
+            <div id="logs" class="page"></div>
+            <div id="nodes" class="page">
+                <div class="view-header">Nodes</div>
+                <div class="canvas-container animate-deploy" style="
+              position: relative;
+              height: 80vh;
+              border: 1px solid var(--border);
+              background: #050505;
+              overflow: hidden;
+            ">
+                    <canvas id="nodeCanvas"></canvas>
+                    <div id="node-overlay" style="
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                pointer-events: none;
+              ">
+                        <div style="
+                  font-family: var(--header-font);
+                  font-size: 10px;
+                  color: var(--primary);
+                ">
+                            [ SYSTEM TOPOLOGY ACTIVE ]
+                        </div>
+                    </div>
+                    <!-- Right Side Panel placeholder -->
+                    <div id="node-side-panel" style="
+                position: absolute;
+                right: -300px;
+                top: 0;
+                bottom: 0;
+                width: 300px;
+                background: var(--surface);
+                border-left: 1px solid var(--border);
+                transition: right 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+                padding: 15px;
+                font-family: var(--header-font);
+                z-index: 10;
+                display: flex;
+                flex-direction: column;
+              ">
+                        <div style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  color: var(--primary);
+                  font-size: 11px;
+                  margin-bottom: 15px;
+                  border-bottom: 1px solid var(--border);
+                  padding-bottom: 10px;
+                ">
+                            <span id="panel-node-title">NODE LOGS</span>
+                            <span style="cursor: pointer; font-size: 16px; color: var(--muted)"
+                                onclick="closeNodePanel()">&times;</span>
+                        </div>
+                        <div id="panel-node-content" style="
+                  flex-grow: 1;
+                  overflow-y: auto;
+                  font-size: 10px;
+                  color: var(--muted);
+                  line-height: 1.5;
+                ">
+                            Waiting for data...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="command" class="page">
+                <div class="view-header">Command Center</div>
+                <div class="command-container animate-deploy" style="
+              display: grid;
+              grid-template-columns: 1fr 300px;
+              gap: 20px;
+              height: calc(100vh - 120px);
+            ">
+                    <!-- Chat Panel -->
+                    <div style="
+                display: flex;
+                flex-direction: column;
+                background: var(--panel);
+                border: 1px solid var(--border);
+                position: relative;
+              ">
+                        <div id="chat-scroller" style="
+                  flex-grow: 1;
+                  overflow-y: auto;
+                  padding: 20px;
+                  font-family: var(--body-font);
+                  font-size: 13px;
+                ">
+                            <div style="
+                    margin-bottom: 20px;
+                    border-left: 2px solid var(--muted);
+                    padding-left: 15px;
+                  ">
+                                <div style="
+                      font-family: var(--header-font);
+                      font-size: 10px;
+                      color: var(--muted);
+                      margin-bottom: 5px;
+                    ">
+                                    HEXAMIND [OMNI-PROTOCOL v2]
+                                </div>
+                                Mission Control online. Awaiting command, Gururaj.<br />
+                                <span style="color: var(--muted); font-size: 11px">Try: /system-summary &nbsp;·&nbsp;
+                                    /check-leaks
+                                    &nbsp;·&nbsp; /repo-status &nbsp;·&nbsp; /gh repos</span>
+                            </div>
+                        </div>
+
+                        <!-- Input row -->
+                        <div style="
+                  padding: 15px 20px;
+                  border-top: 1px solid var(--border);
+                  background: #0c0c0c;
+                ">
+                            <div style="display: flex; gap: 10px; align-items: center">
+                                <!-- Mic button -->
+                                <button id="mic-btn" onclick="toggleVoice()" title="Voice input (Chrome/Edge)" style="
+                      background: transparent;
+                      border: 1px solid var(--muted);
+                      color: var(--muted);
+                      width: 42px;
+                      height: 42px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 16px;
+                      flex-shrink: 0;
+                      transition:
+                        border-color 0.2s,
+                        color 0.2s;
+                    ">
+                                    🎤
+                                </button>
+                                <input type="text" id="cmd-input" placeholder="Enter command or query..." style="
+                      flex-grow: 1;
+                      background: transparent;
+                      border: 1px solid var(--border);
+                      color: var(--primary);
+                      padding: 12px;
+                      font-family: var(--header-font);
+                      outline: none;
+                    " />
+                                <button onclick="sendCommand()" style="
+                      background: var(--primary);
+                      color: #000;
+                      border: none;
+                      padding: 0 20px;
+                      font-family: var(--header-font);
+                      font-weight: bold;
+                      height: 42px;
+                    ">
+                                    SEND
+                                </button>
+                            </div>
+                            <div style="
+                    margin-top: 8px;
+                    display: flex;
+                    gap: 20px;
+                    font-size: 10px;
+                    font-family: var(--header-font);
+                    color: var(--muted);
+                  ">
+                                <span>MODEL:
+                                    <span style="color: var(--text)">HEXAMIND OMNI</span></span>
+                                <span>ORCH:
+                                    <span id="orch-status-label" style="color: var(--danger)">OFFLINE</span></span>
+                                <span id="voice-status" style="display: none; color: var(--primary)">● LISTENING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Sidebar -->
+                    <div style="
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                overflow-y: auto;
+              ">
+                        <!-- Live Metrics -->
+                        <div class="card" style="margin-bottom: 0">
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 10px;
+                    color: var(--primary);
+                    margin-bottom: 12px;
+                  ">
+                                LIVE METRICS
+                            </div>
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 11px;
+                    margin-bottom: 6px;
+                    display: flex;
+                    justify-content: space-between;
+                  ">
+                                <span>RAM</span><span id="cmd-ram-pct" style="color: var(--text)">--</span>
+                            </div>
+                            <div style="
+                    height: 3px;
+                    background: #1a1a1a;
+                    margin-bottom: 12px;
+                    border-radius: 2px;
+                  ">
+                                <div id="cmd-ram-bar" style="
+                      height: 100%;
+                      width: 0%;
+                      background: var(--primary);
+                      transition: width 1s;
+                    "></div>
+                            </div>
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 11px;
+                    margin-bottom: 6px;
+                    display: flex;
+                    justify-content: space-between;
+                  ">
+                                <span>CPU</span><span id="cmd-cpu-pct" style="color: var(--text)">--</span>
+                            </div>
+                            <div style="
+                    height: 3px;
+                    background: #1a1a1a;
+                    margin-bottom: 12px;
+                    border-radius: 2px;
+                  ">
+                                <div id="cmd-cpu-bar" style="
+                      height: 100%;
+                      width: 0%;
+                      background: var(--secondary);
+                      transition: width 1s;
+                    "></div>
+                            </div>
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 11px;
+                    display: flex;
+                    justify-content: space-between;
+                  ">
+                                <span>SERVICES</span><span id="cmd-svc-count" style="color: var(--success)">-- /
+                                    --</span>
+                            </div>
+                        </div>
+
+                        <!-- Quick Ops -->
+                        <div class="card" style="flex-grow: 1">
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 10px;
+                    color: var(--primary);
+                    margin-bottom: 12px;
+                  ">
+                                QUICK OPS
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/system-summary')">
+                                /system-summary
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/check-leaks')">
+                                /check-leaks
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/repo-status')">
+                                /repo-status
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/gh repos')">
+                                /gh repos
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/health-check')">
+                                /health-check
+                            </div>
+                            <div class="op-chip" onclick="quickOp('/clear')">/clear</div>
+                        </div>
+
+                        <!-- Command Reference -->
+                        <div class="card">
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 10px;
+                    color: var(--primary);
+                    margin-bottom: 10px;
+                  ">
+                                COMMAND REF
+                            </div>
+                            <div style="
+                    font-family: var(--header-font);
+                    font-size: 10px;
+                    color: var(--muted);
+                    line-height: 1.9;
+                  ">
+                                /gh repos<br />
+                                /gh commits &lt;repo&gt;<br />
+                                /gh issues &lt;repo&gt;<br />
+                                /system-summary<br />
+                                /check-leaks<br />
+                                /repo-status<br />
+                                /health-check<br />
+                                /clear
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="page">
+                <div class="view-header">Settings</div>
+                <div style="color: var(--muted); font-family: var(--header-font)">
+                    Settings module initializing...
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- TERMINAL DRAWER -->
+    <div id="terminal-drawer">
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          color: var(--primary);
+        ">
+            <span>TERMINAL OUTPUT</span>
+            <span>ESC/` TO CLOSE</span>
+        </div>
+        <div class="log-container" id="log-container">
+            <div class="log-entry sys">
+                [16:00:01] SYSTEM_INITIALIZED: HexaCore v1.0.4 active.
+            </div>
+            <div class="log-entry ok">
+                [16:00:02] GATEWAY: Listening on port 4000...
+            </div>
+        </div>
+        <div class="terminal-input-row">
+            <span class="terminal-prompt">&gt;</span>
+            <input type="text" id="term-input" class="terminal-input" autocomplete="off" spellcheck="false" />
+        </div>
+    </div>
+
+    <script>
+        // --- STATE ENGINE ---
+        let orchestratorOnline = false;
+        let failCount = 0;
+        const HV_STATE = {
+            currentView: 'overview',
+            terminalOpen: false,
+            metrics: {
+                ram: Array(20).fill(35),
+                disk: Array(20).fill(20),
+                uptime: Array(20).fill(100),
+                health: Array(20).fill(100)
+            },
+            services: [
+                { id: 'openclaw', name: 'openclaw-api', port: 7860, status: 'online' },
+                { id: 'litellm', name: 'litellm-proxy', port: 4000, status: 'online' },
+                { id: 'auditor', name: 'security-auditor', port: 7861, status: 'online' },
+                { id: 'ollama', name: 'ollama-engine', port: 11434, status: 'online' }
+            ]
+        };
+
+        // --- DOM Elements ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+        const clockEl = document.getElementById('clock');
+        const rootShell = document.getElementById('root-shell');
+
+        // --- PARALLAX TILT ---
+        window.addEventListener('mousemove', (e) => {
+            const { clientX, clientY } = e;
+            const x = (clientX / window.innerWidth - 0.5) * 10;
+            const y = (clientY / window.innerHeight - 0.5) * 10;
+            rootShell.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
+        });
+
+        // --- SETUP SERVICES ---
+        function renderServices() {
+            const grid = document.getElementById('services-grid');
+            grid.innerHTML = HV_STATE.services.map(s => `
+              <div class="card">
+                  <div class="service-status">
+                      <span style="font-family:var(--header-font); font-size:13px; color:var(--text)">${s.name}</span>
+                      <span class="dot dot-${s.status}"></span>
+                  </div>
+                  <div style="color:var(--muted); font-size:11px; font-family:var(--header-font)">PORT: ${s.port}</div>
+                  <div style="color:var(--muted); font-size:11px; margin-top:4px; font-family:var(--header-font)">STATUS: ACTIVE</div>
+              </div>
+          `).join('');
+        }
+        renderServices();
+
+        // --- VIEW CONTROLLER ---
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-target');
+                if (HV_STATE.currentView === target || !target) return;
+
+                HV_STATE.currentView = target;
+
+                // Switch active nav class
+                navItems.forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+
+                // Switch active page
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                    if (page.id === target) {
+                        page.classList.add('active');
+                        // Retrigger deploy animation by cloning/replacing node or reflowing
+                        page.style.animation = 'none';
+                        page.offsetHeight; /* trigger reflow */
+                        page.style.animation = null;
+
+                        if (target === 'nodes') {
+                            if (!window.nodeCanvasInitialized) {
+                                setTimeout(initNodeCanvas, 50);
+                                window.nodeCanvasInitialized = true;
+                            }
+                        }
+                        if (target === 'agents') {
+                            if (!window.agentsRendered) {
+                                renderAgents();
+                                window.agentsRendered = true;
+                            }
+                        }
+                        if (target === 'keys') {
+                            if (!window.keysRendered) {
+                                renderKeys();
+                                window.keysRendered = true;
+                            }
+                        }
+                        if (target === 'logs') {
+                            if (!window.logsRendered) {
+                                renderLogs();
+                                window.logsRendered = true;
+                            }
+                        }
+
+                    }
+                });
+            });
+        });
+
+        // --- TERMINAL DRAWER ---
+        const terminalDrawer = document.getElementById('terminal-drawer');
+        const logContainer = document.getElementById('log-container');
+        const termInput = document.getElementById('term-input');
+
+        function logToTerminal(msg, type = '') {
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString('en-IN', { hour12: false });
+
+            // Smart Categorization
+            let cat = "[SYS]";
+            let color = "var(--text)";
+            if (type === 'ok') { cat = "[AUTH]"; color = "var(--success)"; }
+            if (type === 'sys') { cat = "[AUDIT]"; color = "var(--primary)"; }
+            if (msg.includes('leak') || msg.includes('LOST')) { cat = "[MALWARE]"; color = "var(--danger)"; }
+
+            div.className = `log-entry ${type}`;
+            div.style.color = color;
+            div.innerHTML = `<span style="color:var(--muted); font-size:9px;">${time}</span> <span style="font-weight:bold;">${cat}</span> ${msg}`;
+
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '`' || e.key === 'Escape') {
+                if (e.key === '`') e.preventDefault();
+                HV_STATE.terminalOpen = !HV_STATE.terminalOpen;
+                if (HV_STATE.terminalOpen) {
+                    terminalDrawer.classList.add('open');
+                    setTimeout(() => termInput.focus(), 100);
+                } else {
+                    terminalDrawer.classList.remove('open');
+                    termInput.blur();
+                }
+            }
+        });
+
+        termInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = termInput.value.trim();
+                if (cmd) {
+                    logToTerminal(`> ${cmd}`);
+                    setTimeout(() => {
+                        logToTerminal(`[CMD] '${cmd}' unrecognized.`, 'sys');
+                    }, 1200);
+                    termInput.value = '';
+                }
+            }
+        });
+
+        // --- TACTICAL BOOT SEQUENCE ---
+        async function bootSystem() {
+            const bootLog = document.getElementById('boot-log');
+            if (!bootLog) return;
+            const bootScreen = document.getElementById('boot-screen');
+            const shell = document.getElementById('root-shell');
+
+            const lines = [
+                "> INITIALIZING OBSIDIAN_GLASS_ALPHA...",
+                "> KERNEL: TACTICAL_CORE_V1.4",
+                "> MAPPING: " + HV_STATE.services.map(s => s.id).join(' | '),
+                "> TELEMETRY_STREAMS: ATTACHED",
+                "> VIRTUAL_CANVAS: READY",
+                "> [ OK ] ACCESS GRANTED."
+            ];
+
+            for (const line of lines) {
+                const div = document.createElement('div');
+                div.style.marginBottom = "4px";
+                bootLog.appendChild(div);
+                for (let char of line) {
+                    div.textContent += char;
+                    await new Promise(r => setTimeout(r, 10));
+                }
+                await new Promise(r => setTimeout(r, 80));
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+            bootScreen.style.opacity = '0';
+            setTimeout(() => {
+                bootScreen.style.display = 'none';
+                shell.classList.add('system-ready');
+                logToTerminal("Obsidian Glass Alpha v1.4.0 — Unified Tactical Interface active.", "ok");
+            }, 1000);
+        }
+
+        // --- RELAY HAPTICS ---
+        document.addEventListener('mousedown', () => {
+            document.body.classList.add('haptic-active');
+            setTimeout(() => document.body.classList.remove('haptic-active'), 50);
+        });
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            bootSystem();
+            initMatrixNetwork();
+            updateClock();
+        });
+
+        // --- VISUAL HAPTICS ---
+        window._triggerDangerPulse = () => {
+            document.body.classList.add('system-offline-pulse');
+            setTimeout(() => document.body.classList.remove('system-offline-pulse'), 2000);
+        };
+
+        // --- TELEMETRY ENGINE & SPARKLINES ---
+        const canvasCtx = {
+            ram: document.getElementById('spark-ram').getContext('2d'),
+            disk: document.getElementById('spark-disk').getContext('2d'),
+            uptime: document.getElementById('spark-uptime').getContext('2d'),
+            health: document.getElementById('spark-health').getContext('2d'),
+        };
+
+        function drawSparkline(ctx, data, color) {
+            const w = ctx.canvas.width = 100;
+            const h = ctx.canvas.height = 24;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+
+            const max = 100;
+            const step = w / (data.length - 1);
+
+            ctx.moveTo(0, h - (data[0] / max * h));
+            for (let i = 1; i < data.length; i++) {
+                ctx.lineTo(i * step, h - (data[i] / max * h));
+            }
+            ctx.stroke();
+        }
+
+        let uptimeSeconds = 8 * 3600 + 56 * 60 + 12;
+
+        function updateClock() {
+            const now = new Date();
+            clockEl.innerText = now.toISOString().replace('T', ' ').split('.')[0];
+
+            uptimeSeconds++;
+            const uptime_h = Math.floor(uptimeSeconds / 3600);
+            const uptime_m = Math.floor((uptimeSeconds % 3600) / 60);
+            const uptime_s = uptimeSeconds % 60;
+            document.getElementById('val-uptime').innerText =
+                `${uptime_h.toString().padStart(2, '0')}:${uptime_m.toString().padStart(2, '0')}:${uptime_s.toString().padStart(2, '0')} `;
+
+            if (HV_STATE.currentView === 'overview') {
+                drawSparkline(canvasCtx.ram, HV_STATE.metrics.ram, '#E8FF00');
+                drawSparkline(canvasCtx.disk, HV_STATE.metrics.disk, '#CCCCCC');
+                drawSparkline(canvasCtx.uptime, HV_STATE.metrics.uptime, '#444444');
+                drawSparkline(canvasCtx.health, HV_STATE.metrics.health, '#00FF88');
+            }
+        }
+
+        async function syncHardwareData() {
+            try {
+                const response = await fetch('http://localhost:8000/system/status');
+                const data = await response.json();
+
+                if (!orchestratorOnline) {
+                    orchestratorOnline = true;
+                    failCount = 0;
+                    document.body.classList.remove('system-offline');
+                    logToTerminal('[HEARTBEAT] Orchestrator connection restored.', 'ok');
+                }
+
+                HV_STATE.metrics.ram.shift();
+                HV_STATE.metrics.ram.push(data.telemetry.ram);
+
+                HV_STATE.metrics.disk.shift();
+                HV_STATE.metrics.disk.push(data.telemetry.disk);
+
+                HV_STATE.metrics.health.shift();
+                HV_STATE.metrics.health.push(data.telemetry.cpu || 100);
+
+                if (window._nodesPackets && HV_STATE.currentView === 'nodes') {
+                    window._triggerNodePulse();
+                }
+
+                if (data.services) {
+                    const currentStatuses = HV_STATE.services.map(s => s.status).join(',');
+                    const newStatuses = data.services.map(s => s.status).join(',');
+                    if (currentStatuses !== newStatuses || HV_STATE.services.length !== data.services.length) {
+                        HV_STATE.services = data.services;
+                        if (HV_STATE.currentView === 'overview') renderServices();
+                    }
+                }
+
+                if (HV_STATE.currentView === 'overview') {
+                    document.getElementById('txt-ram-pct').innerText = Math.round(data.telemetry.ram) + '%';
+                    document.getElementById('val-ram').innerText = (16 * (data.telemetry.ram / 100)).toFixed(1) + ' GB';
+                    document.getElementById('val-disk').innerText = Math.round(data.telemetry.disk) + '% USED';
+                }
+            } catch (err) {
+                failCount++;
+                if (failCount >= 2 && orchestratorOnline !== false) {
+                    orchestratorOnline = false;
+                    document.body.classList.add('system-offline');
+                    logToTerminal('[CRITICAL] Orchestrator heartbeat LOST. Port 8000 unreachable.', 'sys');
+                }
+                HV_STATE.metrics.ram.shift(); HV_STATE.metrics.ram.push(0);
+                HV_STATE.metrics.disk.shift(); HV_STATE.metrics.disk.push(0);
+                HV_STATE.metrics.health.shift(); HV_STATE.metrics.health.push(0);
+            }
+        }
+
+        // --- NODES CANVAS LOGIC ---
+        window.nodeCanvasInitialized = false;
+
+        function closeNodePanel() {
+            document.getElementById('node-side-panel').style.right = '-300px';
+        }
+
+        function initMatrixNetwork() {
+            const canvas = document.getElementById('bg-matrix');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let w, h;
+            let particles = [];
+            const particleCount = 120;
+
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2
+                });
+            }
+
+            function drawMatrix() {
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = '#CCCCCC';
+                ctx.globalAlpha = 0.15;
+
+                particles.forEach(p => {
+                    // THINKING STATE: Accelerated convergence
+                    if (HV_STATE.thinking) {
+                        const dx = (w / 2) - p.x;
+                        const dy = (h / 2) - p.y;
+                        p.vx += dx * 0.001;
+                        p.vy += dy * 0.001;
+                        ctx.globalAlpha = 0.4;
+                    } else {
+                        p.vx += (Math.random() - 0.5) * 0.01;
+                        p.vy += (Math.random() - 0.5) * 0.01;
+                        // Dampen velocity
+                        p.vx *= 0.99;
+                        p.vy *= 0.99;
+                    }
+
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+                    if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                requestAnimationFrame(drawMatrix);
+            }
+            drawMatrix();
+        }
+
+        function initNodeCanvas() {
+            const canvas = document.getElementById('nodeCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+
+            let nodes = [
+                { id: 'WAN', x: 100, y: canvas.height / 2, label: 'INTERNET', status: 'online' },
+                { id: 'GTW', x: 300, y: canvas.height / 2, label: 'CLOUDFLARE', status: 'online' },
+                { id: 'API', x: 500, y: canvas.height / 2 - 60, label: 'OPENCLAW', status: 'online' },
+                { id: 'LLM', x: 500, y: canvas.height / 2 + 60, label: 'LITELLM', status: 'online' },
+                { id: 'OLM', x: 750, y: canvas.height / 2, label: 'OLLAMA', status: 'online' }
+            ];
+
+            let offset = 0;
+            let packets = [];
+            const paths = [
+                { from: 0, to: 1 }, { from: 1, to: 2 }, { from: 2, to: 4 },
+                { from: 1, to: 3 }, { from: 3, to: 4 }
+            ];
+
+            let panOffset = { x: 0, y: 0 };
+            let isDragging = false;
+            let dragStart = { x: 0, y: 0 };
+            let focusedNode = null;
+
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left - panOffset.x;
+                const my = e.clientY - rect.top - panOffset.y;
+                let clickedNode = null;
+                nodes.forEach(n => {
+                    if (mx >= n.x - 40 && mx <= n.x + 40 && my >= n.y - 20 && my <= n.y + 20) {
+                        clickedNode = n;
+                    }
+                });
+                if (clickedNode) {
+                    focusedNode = clickedNode;
+                    clickedNode.flash = 1.0;
+                    document.getElementById('node-side-panel').style.right = '0';
+                    document.getElementById('panel-node-title').innerText = clickedNode.label + ' LOGS';
+                    document.getElementById('panel-node-content').innerHTML = `[SYS] Connecting to ${clickedNode.id} socket...<br/>[SYS] Status: <span style="color:var(--success)">${clickedNode.status.toUpperCase()}</span><br/><br/>[DATA] Stream initialized.<br/>> Heartbeat nominal.`;
+
+                } else {
+                    isDragging = true;
+                    dragStart.x = e.clientX - panOffset.x;
+                    dragStart.y = e.clientY - panOffset.y;
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    panOffset.x = e.clientX - dragStart.x;
+                    panOffset.y = e.clientY - dragStart.y;
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => { isDragging = false; });
+
+            window._nodesPackets = packets;
+            window._triggerNodePulse = () => {
+                const path = paths[2];
+                packets.push({ path: path, progress: 0, speed: 0.015 });
+            };
+
+            function varColor(name) {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#FFFFFF';
+            }
+
+            function draw() {
+                if (HV_STATE.currentView !== 'nodes') {
+                    requestAnimationFrame(draw);
+                    return;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(panOffset.x, panOffset.y);
+
+                offset = (offset + 0.5) % 30;
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                for (let i = -30; i < canvas.width + 60; i += 30) {
+                    for (let j = -30; j < canvas.height + 60; j += 30) {
+                        ctx.fillRect(i - offset - panOffset.x, j - offset - panOffset.y, 1, 1);
+                    }
+                }
+
+                paths.forEach(p => {
+                    const isFocused = focusedNode && (nodes[p.from] === focusedNode || nodes[p.to] === focusedNode);
+                    ctx.strokeStyle = isFocused ? 'rgba(232, 255, 0, 0.3)' : 'rgba(255,255,255,0.1)';
+                    ctx.beginPath();
+                    ctx.moveTo(nodes[p.from].x, nodes[p.from].y);
+                    ctx.lineTo(nodes[p.to].x, nodes[p.to].y);
+                    ctx.stroke();
+                });
+
+                for (let i = packets.length - 1; i >= 0; i--) {
+                    let p = packets[i];
+                    p.progress += p.speed;
+                    if (p.progress >= 1) {
+                        nodes[p.path.to].flash = 1.0;
+                        packets.splice(i, 1);
+                    } else {
+                        const n1 = nodes[p.path.from];
+                        const n2 = nodes[p.path.to];
+                        const x = n1.x + (n2.x - n1.x) * p.progress;
+                        const y = n1.y + (n2.y - n1.y) * p.progress;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 2, 0, Math.PI * 2);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fill();
+                    }
+                }
+
+                nodes.forEach(n => {
+                    ctx.save();
+                    // DATA GHOSTING: High-frequency jitter when flashing/receiving
+                    if (n.flash && n.flash > 0) {
+                        const jitter = n.flash * 3;
+                        ctx.translate((Math.random() - 0.5) * jitter, (Math.random() - 0.5) * jitter);
+
+                        // Floating Tooltip
+                        ctx.fillStyle = "rgba(232, 255, 0, " + n.flash + ")";
+                        ctx.font = "8px 'Space Mono'";
+                        ctx.fillText(`[ ${(Math.random() * 5).toFixed(1)}KB ]`, n.x, n.y - 30);
+                    }
+
+                    ctx.fillStyle = 'rgba(15,15,15,0.9)';
+                    if (n.flash && n.flash > 0) {
+                        ctx.fillStyle = `rgba(232, 255, 0, ${n.flash * 0.15})`;
+                        n.flash -= 0.04;
+                    }
+                    ctx.strokeStyle = varColor('--border');
+                    ctx.strokeRect(n.x - 40, n.y - 20, 80, 40);
+                    ctx.fillRect(n.x - 40, n.y - 20, 80, 40);
+
+                    ctx.fillStyle = varColor('--text');
+                    ctx.font = '10px "Space Mono"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(n.label, n.x, n.y + 5);
+
+                    ctx.fillStyle = varColor('--success');
+                    ctx.beginPath();
+                    ctx.arc(n.x - 30, n.y - 12, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+
+                ctx.restore(); // end pan transform
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+        }
+
+        // Initial setup
+        setInterval(updateClock, 1000);
+        setInterval(syncHardwareData, 2000);
+        updateClock();
+        syncHardwareData();
+
+        // ─── JS HEAP MONITOR (Chrome Forensic Bridge) ────────────────────────────
+        setInterval(() => {
+            if (!window.performance || !window.performance.memory) return;
+            const mem = window.performance.memory;
+            const heapPct = (mem.usedJSHeapSize / mem.jsHeapSizeLimit) * 100;
+            const heapMB = (mem.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+            const limitMB = (mem.jsHeapSizeLimit / (1024 * 1024)).toFixed(0);
+            if (heapPct > 85) {
+                if (!HV_STATE.terminalOpen) {
+                    HV_STATE.terminalOpen = true;
+                    terminalDrawer.classList.add('open');
+                }
+                logToTerminal(`[CRITICAL] JS Heap: ${heapMB}MB / ${limitMB}MB (${heapPct.toFixed(1)}%) — browser leak!`);
+                document.body.classList.add('system-offline');
+                if (window._triggerDangerPulse) window._triggerDangerPulse();
+            } else if (heapPct > 65) {
+                logToTerminal(`[WARN] JS Heap: ${heapMB}MB / ${limitMB}MB (${heapPct.toFixed(1)}%)`, 'sys');
+            }
+        }, 10000);
+
+        // ─── COMMAND CENTER ───────────────────────────────────────────────────────
+
+        // Live Metrics sidebar updater
+        function updateCommandMetrics(ramPct, cpuPct, svcUp, svcTotal) {
+            const rEl = document.getElementById('cmd-ram-pct');
+            const rBar = document.getElementById('cmd-ram-bar');
+            const cEl = document.getElementById('cmd-cpu-pct');
+            const cBar = document.getElementById('cmd-cpu-bar');
+            const sEl = document.getElementById('cmd-svc-count');
+            const ol = document.getElementById('orch-status-label');
+            if (rEl) rEl.innerText = ramPct.toFixed(1) + '%';
+            if (rBar) rBar.style.width = ramPct + '%';
+            if (cEl) cEl.innerText = cpuPct.toFixed(1) + '%';
+            if (cBar) cBar.style.width = cpuPct + '%';
+            if (sEl) sEl.innerText = svcUp + ' / ' + svcTotal;
+            if (ol) {
+                ol.innerText = orchestratorOnline ? 'ONLINE' : 'OFFLINE';
+                ol.style.color = orchestratorOnline ? 'var(--success)' : 'var(--danger)';
+            }
+
+        }
+
+        // Typed streaming card
+        function injectResponse(scroller, html, scanner, typed = false) {
+            if (scanner && scanner.parentElement) scanner.remove();
+            if (!scroller || !scroller.parentElement) return;
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'margin-bottom:20px; border-left:2px solid var(--secondary); padding-left:15px;';
+            const label = document.createElement('div');
+            label.style.cssText = 'font-family:var(--header-font); font-size:10px; color:var(--muted); margin-bottom:6px;';
+            label.innerText = 'HEXAMIND';
+            const body = document.createElement('div');
+            body.style.cssText = 'font-family:var(--header-font); font-size:11px; line-height:1.8;';
+            wrapper.appendChild(label);
+            wrapper.appendChild(body);
+            scroller.appendChild(wrapper);
+            if (!typed) {
+                body.innerHTML = html;
+                scroller.scrollTop = scroller.scrollHeight;
+                return;
+            }
+            const caret = document.createElement('span');
+            caret.className = 'typing-caret';
+            body.appendChild(caret);
+            const plain = html.replace(/<[^>]*>/g, '');
+            let i = 0;
+            const speed = Math.max(12, Math.min(28, 1800 / plain.length));
+            const tick = setInterval(() => {
+                if (i < plain.length) {
+                    caret.insertAdjacentText('beforebegin', plain[i++]);
+                    scroller.scrollTop = scroller.scrollHeight;
+                } else { clearInterval(tick); caret.remove(); }
+            }, speed);
+        }
+
+        // Data row helper
+        function row(label, val, color = 'var(--text)') {
+            return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a1a1a;">
+              <span style="color:var(--muted);font-family:var(--header-font);font-size:10px;">${label}</span>
+              <span style="color:${color};font-family:var(--header-font);font-size:10px;">${val}</span></div>`;
+        }
+
+        // ── /system-summary ──────────────────────────────────────────────────────
+        async function handleSystemSummary(scroller, scanner) {
+            try {
+                const res = await fetch('http://localhost:8000/intel/system-summary');
+                const d = await res.json();
+                const ramColor = d.ram_pct > 85 ? 'var(--danger)' : d.ram_pct > 65 ? '#ffaa00' : 'var(--success)';
+                const cpuColor = d.cpu_pct > 80 ? 'var(--danger)' : 'var(--text)';
+                let html = `<b style="color:var(--primary);font-family:var(--header-font);">⬡ SYSTEM SUMMARY</b><br/><br/>`;
+                html += row('RAM USAGE', `${d.ram_pct}% &nbsp;(${d.ram_used_gb} / ${d.ram_total_gb} GB)`, ramColor);
+                html += row('CPU LOAD', `${d.cpu_pct}%`, cpuColor);
+                html += row('DISK USED', `${d.disk_pct}% &nbsp;(${d.disk_free_gb} GB free)`);
+                html += row('NET SENT', `${d.net_sent_mb} MB`);
+                html += row('NET RECV', `${d.net_recv_mb} MB`);
+                html += row('SERVICES', `${d.services_up} online / ${d.services_up + d.services_down} total`,
+                    d.services_down > 0 ? 'var(--danger)' : 'var(--success)');
+                html += row('PROCESSES', `${d.proc_count} running`);
+                html += row('PLATFORM', d.platform);
+                if (d.top_procs && d.top_procs.length) {
+                    html += `<br/><span style="color:var(--primary);font-family:var(--header-font);font-size:10px;">TOP CPU PROCESSES</span><br/>`;
+                    d.top_procs.forEach(([name, pct]) => {
+                        html += row(name, pct.toFixed(1) + '%', pct > 20 ? 'var(--danger)' : 'var(--text)');
+                    });
+                }
+                injectResponse(scroller, html, scanner, false);
+                logToTerminal(`[INTEL] system-summary: RAM ${d.ram_pct}% | CPU ${d.cpu_pct}% | Svc ${d.services_up} up`, 'ok');
+                document.body.classList.remove('system-offline');
+            } catch (e) {
+                document.body.classList.add('system-offline');
+                if (window._triggerDangerPulse) window._triggerDangerPulse();
+                injectResponse(scroller, `<span style="color:var(--danger)">[ERROR] Orchestrator offline. Run: python orchestrator.py</span>`, scanner, false);
+            }
+        }
+
+        // ── /check-leaks ─────────────────────────────────────────────────────────
+        async function handleCheckLeaks(scroller, scanner) {
+            try {
+                const res = await fetch('http://localhost:8000/intel/memory-audit');
+                const d = await res.json();
+                const pc = d.pressure === 'CRITICAL' ? 'var(--danger)' : d.pressure === 'WARNING' ? '#ffaa00' : 'var(--success)';
+                let html = `<b style="color:var(--primary);font-family:var(--header-font);">⬡ MEMORY FORENSICS</b><br/><br/>`;
+                html += row('PRESSURE', d.pressure, pc);
+                html += row('RAM IN USE', `${d.ram_pct}% (${d.ram_used_gb} GB)`, pc);
+                html += row('RAM AVAILABLE', `${d.ram_avail_gb} GB`);
+                html += row('SWAP USAGE', `${d.swap_pct}%`, d.swap_pct > 50 ? 'var(--danger)' : 'var(--text)');
+                html += `<br/><span style="color:var(--primary);font-family:var(--header-font);font-size:10px;">TOP MEMORY CONSUMERS</span><br/>`;
+                let hasCritical = false;
+                (d.top_consumers || []).forEach(proc => {
+                    const isCrit = proc.ram_pct > 10;
+                    if (isCrit) hasCritical = true;
+                    html += row(`[${proc.pid}] ${proc.name}`,
+                        `${proc.ram_pct}% (${proc.ram_mb} MB)`,
+                        isCrit ? 'var(--danger)' : proc.ram_pct > 5 ? '#ffaa00' : 'var(--text)');
+                });
+                injectResponse(scroller, html, scanner, false);
+                if (d.pressure === 'CRITICAL' || hasCritical) {
+                    if (!HV_STATE.terminalOpen) { HV_STATE.terminalOpen = true; terminalDrawer.classList.add('open'); }
+                    logToTerminal(`[CRITICAL] Memory at ${d.ram_pct}% — leak risk detected!`);
+                    if (window._triggerDangerPulse) window._triggerDangerPulse();
+                } else {
+                    logToTerminal(`[AUDIT] Memory scan OK. Pressure: ${d.pressure} (${d.ram_pct}%)`, 'ok');
+                }
+            } catch (e) {
+                document.body.classList.add('system-offline');
+                injectResponse(scroller, `<span style="color:var(--danger)">[ERROR] Orchestrator offline. Run: python orchestrator.py</span>`, scanner, false);
+            }
+        }
+
+        // ── /repo-status ─────────────────────────────────────────────────────────
+        const GITHUB_USER = 'gururajseethur';
+        const TRACKED_REPOS = [
+            { name: 'Hexamind_Lets_Secure', type: 'CYBERSEC', lang: 'Python' },
+            { name: 'gururajseethur.in', type: 'PORTFOLIO', lang: 'JavaScript' },
+            { name: 'Tryhackme-Gururajseethur', type: 'CYBERSEC', lang: 'TypeScript' },
+            { name: 'privacy-incident-response', type: 'GRC', lang: 'Markdown' },
+            { name: 'secure-file-transfer-design', type: 'GRC', lang: 'Markdown' },
+        ];
+        async function handleRepoStatus(scroller, scanner) {
+            let html = `<b style="color:var(--primary);font-family:var(--header-font);">⬡ GITHUB INTEL — @${GITHUB_USER}</b><br/><br/>`;
+            html += `<span style="color:var(--muted);font-size:10px;font-family:var(--header-font);">Fetching live data...</span>`;
+            injectResponse(scroller, html, scanner, false);
+            const results = [];
+            for (const repo of TRACKED_REPOS) {
+                try {
+                    const r = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${repo.name}/commits?per_page=1`,
+                        { headers: { Accept: 'application/vnd.github.v3+json' } });
+                    if (r.ok) {
+                        const commits = await r.json();
+                        const latest = commits[0];
+                        results.push({
+                            ...repo,
+                            msg: latest?.commit?.message || 'No commits',
+                            date: latest?.commit?.author?.date
+                                ? new Date(latest.commit.author.date).toLocaleDateString('en-IN') : '--',
+                            ok: true
+                        });
+                    } else {
+                        results.push({ ...repo, msg: 'Private / no access', date: '--', ok: false });
+                    }
+                } catch { results.push({ ...repo, msg: 'Network error', date: '--', ok: false }); }
+            }
+            let finalHtml = `<b style="color:var(--primary);font-family:var(--header-font);">⬡ GITHUB INTEL — @${GITHUB_USER}</b><br/><br/>`;
+            results.forEach(r => {
+                const tc = r.type === 'CYBERSEC' ? 'var(--danger)' : r.type === 'GRC' ? '#ffaa00' : 'var(--primary)';
+                finalHtml += `<div style="margin-bottom:10px;padding:8px;background:#0d0d0d;border-left:2px solid ${tc};">`;
+                finalHtml += `<div style="font-family:var(--header-font);font-size:10px;color:${tc};margin-bottom:4px;">[${r.type}] ${r.name} <span style="color:var(--muted);">(${r.lang})</span></div>`;
+                finalHtml += `<div style="font-size:11px;color:var(--text);margin-bottom:2px;">💬 ${r.msg}</div>`;
+                finalHtml += `<div style="font-size:10px;color:var(--muted);">🕐 ${r.date}</div></div>`;
+            });
+            const cards = scroller.querySelectorAll('div[style*="border-left:2px solid var(--secondary)"]');
+            if (cards.length > 0) cards[cards.length - 1].querySelector('div:last-child').innerHTML = finalHtml;
+            else scroller.innerHTML += `<div style="margin-bottom:20px;border-left:2px solid var(--secondary);padding-left:15px;"><div style="font-family:var(--header-font);font-size:10px;color:var(--muted);margin-bottom:6px;">HEXAMIND</div><div>${finalHtml}</div></div>`;
+            scroller.scrollTop = scroller.scrollHeight;
+            logToTerminal(`[INTEL] repo-status: ${results.filter(r => r.ok).length}/${results.length} repos scanned`, 'ok');
+        }
+
+        // ── /gh family ───────────────────────────────────────────────────────────
+        async function handleGithubCommand(scroller, scanner, rawCmd) {
+            const parts = rawCmd.trim().split(/\s+/);
+            const sub = parts[0] || 'repos';
+            const repo = parts[1] || null;
+            if (window._triggerGithubPulse) window._triggerGithubPulse();
+            const GH = 'https://api.github.com';
+            const HDR = { Accept: 'application/vnd.github.v3+json' };
+            try {
+                let html = `<b style="color:var(--primary);font-family:var(--header-font);">⬡ GITHUB / ${sub.toUpperCase()}${repo ? ' / ' + repo : ''}</b><br/><br/>`;
+                if (sub === 'repos') {
+                    const r = await fetch(`${GH}/users/${GITHUB_USER}/repos?sort=updated&per_page=8`, { headers: HDR });
+                    const data = await r.json();
+                    data.forEach(rep => {
+                        html += row(rep.name, `${rep.language || 'Markdown'} · ${new Date(rep.updated_at).toLocaleDateString('en-IN')}`, 'var(--text)');
+                    });
+                    html += `<br/><span style="color:var(--muted);font-size:10px;">${data.length} repos · github.com/${GITHUB_USER}</span>`;
+                    logToTerminal(`[GH] repos: ${data.length} found`, 'ok');
+                } else if (sub === 'issues' && repo) {
+                    const r = await fetch(`${GH}/repos/${GITHUB_USER}/${repo}/issues?state=open&per_page=5`, { headers: HDR });
+                    const data = await r.json();
+                    if (!Array.isArray(data) || data.length === 0) {
+                        html += `<span style="color:var(--success);">No open issues in ${repo}.</span>`;
+                    } else {
+                        data.forEach(iss => html += row(`#${iss.number} ${iss.title}`, 'OPEN', 'var(--danger)'));
+                    }
+                    logToTerminal(`[GH] issues/${repo}: ${Array.isArray(data) ? data.length : 0} open`, 'ok');
+                } else if (sub === 'commits' && repo) {
+                    const r = await fetch(`${GH}/repos/${GITHUB_USER}/${repo}/commits?per_page=5`, { headers: HDR });
+                    const data = await r.json();
+                    if (!Array.isArray(data) || data.length === 0) {
+                        html += `<span style="color:var(--muted);">No commits or private repo.</span>`;
+                    } else {
+                        data.forEach(c => {
+                            const sha = c.sha.substring(0, 7);
+                            const msg = c.commit.message.split('\n')[0].substring(0, 52);
+                            const date = new Date(c.commit.author.date).toLocaleDateString('en-IN');
+                            html += row(`[${sha}] ${msg}`, date, 'var(--text)');
+                        });
+                    }
+                    logToTerminal(`[GH] commits/${repo}: ${Array.isArray(data) ? data.length : 0} shown`, 'ok');
+                } else {
+                    html += `<span style="color:var(--muted);">Usage:<br/>/gh repos<br/>/gh commits &lt;repo&gt;<br/>/gh issues &lt;repo&gt;</span>`;
+                }
+                injectResponse(scroller, html, scanner, false);
+            } catch (e) {
+                document.body.classList.add('system-offline');
+                if (window._triggerDangerPulse) window._triggerDangerPulse();
+                injectResponse(scroller, `<span style="color:var(--danger)">[GH ERROR] ${e.message}</span>`, scanner, false);
+            }
+        }
+
+        // ── COMMAND ROUTER ───────────────────────────────────────────────────────
+        function sendCommand() {
+            const input = document.getElementById('cmd-input');
+            const scroller = document.getElementById('chat-scroller');
+            if (!input || !input.value.trim()) return;
+            // Activation: Acceleration & Convergence
+            HV_STATE.thinking = true;
+
+            scroller.innerHTML += `
+              <div style="margin-bottom:20px; text-align:right;">
+                  <div style="font-family:var(--header-font); font-size:10px; color:var(--primary); margin-bottom:5px;">[ USER_INPUT ]</div>
+                  <span style="color:var(--text)">${userMsg}</span>
+              </div>`;
+            scroller.scrollTop = scroller.scrollHeight;
+
+            const chatPanel = scroller.parentElement;
+            const scanner = document.createElement('div');
+            scanner.className = 'kitt-scanner';
+            chatPanel.appendChild(scanner);
+
+            setTimeout(() => { HV_STATE.thinking = false; }, 2000);
+
+
+            const val = userMsg.toLowerCase().trim();
+
+            // ── ROUTE TABLE ──────────────────────────────────────────────────────
+            if (val.startsWith('/gh')) {
+                setTimeout(() => handleGithubCommand(scroller, scanner, val.slice(3).trim()), 300);
+                return;
+            }
+            if (val.startsWith('/system-summary')) {
+                if (window._triggerNodePulse) window._triggerNodePulse();
+                setTimeout(() => handleSystemSummary(scroller, scanner), 300);
+                return;
+            }
+            if (val.startsWith('/check-leaks')) {
+                setTimeout(() => handleCheckLeaks(scroller, scanner), 300);
+                return;
+            }
+            if (val.startsWith('/repo-status')) {
+                if (window._triggerGithubPulse) window._triggerGithubPulse();
+                setTimeout(() => handleRepoStatus(scroller, scanner), 300);
+                return;
+            }
+            if (val.startsWith('/clear')) {
+                if (scanner.parentElement) scanner.remove();
+                scroller.innerHTML = '';
+                return;
+            }
+
+            // ── NATURAL LANGUAGE (typed effect, context-aware) ───────────────────
+            const ram = HV_STATE.metrics.ram[HV_STATE.metrics.ram.length - 1] || 0;
+            const cpu = HV_STATE.metrics.health[HV_STATE.metrics.health.length - 1] || 0;
+            const svcOnline = HV_STATE.services.filter(s => s.status === 'online').length;
+            let response = `HexaCore nominal. RAM: ${ram.toFixed(1)}%. CPU: ${cpu.toFixed(1)}%. Services: ${svcOnline}/${HV_STATE.services.length} online.`;
+            let isHealthCheck = false;
+
+            if (val.includes('health') || val.startsWith('/health')) {
+                response = `All systems ${orchestratorOnline ? 'GREEN' : 'DEGRADED'}. RAM: ${ram.toFixed(1)}% — CPU: ${cpu.toFixed(1)}% — ${svcOnline}/${HV_STATE.services.length} services online.`;
+                isHealthCheck = true;
+                if (window._triggerNodePulse) window._triggerNodePulse();
+            } else if (val.includes('scan') || val.includes('network')) {
+                response = 'Network recon initialized. Scanning 192.168.x.0/24... [stub — wire to nmap endpoint]';
+            } else if (val.includes('agent')) {
+                response = `3 agents registered. CVE Watchdog: active. Domain Monitor: active. Marketing OS: pending.`;
+            } else if (val.includes('node') || val.includes('topology')) {
+                response = `Topology: 5 nodes. WAN→CLOUDFLARE→OPENCLAW/LITELLM→OLLAMA. Drag canvas to pan. Click node to inspect.`;
+            }
+
+            setTimeout(() => {
+                injectResponse(scroller, response, scanner, true);
+                if (isHealthCheck) {
+                    if (!HV_STATE.terminalOpen) { HV_STATE.terminalOpen = true; terminalDrawer.classList.add('open'); }
+                    logToTerminal('[CMD] /health-check executed', 'sys');
+                    logToTerminal(`{"ram":"${ram.toFixed(1)}%","cpu":"${cpu.toFixed(1)}%","svc":${svcOnline},"orch":"${orchestratorOnline ? 'ONLINE' : 'OFFLINE'}"}`, 'ok');
+                }
+            }, 400 + Math.random() * 500);
+        }
+
+        function quickOp(cmd) {
+            const input = document.getElementById('cmd-input');
+            if (input) { input.value = cmd; sendCommand(); }
+        }
+
+        document.getElementById('cmd-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') sendCommand();
+        });
+
+        // ── VOICE INPUT ──────────────────────────────────────────────────────────
+        let voiceRecognition = null, voiceActive = false;
+        function toggleVoice() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const micBtn = document.getElementById('mic-btn');
+            const vStat = document.getElementById('voice-status');
+            if (!SR) { logToTerminal('[VOICE] Speech Recognition not supported. Use Chrome/Edge.', 'sys'); return; }
+            if (voiceActive) {
+                if (voiceRecognition) voiceRecognition.stop();
+                voiceActive = false;
+                if (micBtn) { micBtn.style.borderColor = ''; micBtn.style.color = 'var(--muted)'; }
+                if (vStat) vStat.style.display = 'none';
+                return;
+            }
+            voiceRecognition = new SR();
+            voiceRecognition.lang = 'en-IN';
+            voiceRecognition.interimResults = false;
+            voiceRecognition.onstart = () => {
+                voiceActive = true;
+                if (micBtn) { micBtn.style.borderColor = 'var(--primary)'; micBtn.style.color = 'var(--primary)'; }
+                if (vStat) vStat.style.display = 'inline';
+                logToTerminal('[VOICE] Listening...', 'ok');
+            };
+            voiceRecognition.onresult = e => {
+                const t = e.results[0][0].transcript;
+                const input = document.getElementById('cmd-input');
+                if (input) { input.value = t; logToTerminal(`[VOICE] "${t}"`, 'ok'); setTimeout(sendCommand, 300); }
+            };
+            voiceRecognition.onerror = e => logToTerminal(`[VOICE] Error: ${e.error}`, 'sys');
+            voiceRecognition.onend = () => {
+                voiceActive = false;
+                if (micBtn) { micBtn.style.borderColor = ''; micBtn.style.color = 'var(--muted)'; }
+                if (vStat) vStat.style.display = 'none';
+            };
+            voiceRecognition.start();
+        }
+
+
+
+        // --- AGENTS RENDERING ---
+        window.agentsRendered = false;
+
+        // Agent schedule definitions (24h slot model)
+        const AGENT_CONFIG = [
+            { name: 'CVE WATCHDOG', interval: 6, target: 'NVD, ExploitDB', lastRun: 'SUCCESS', detail: 'FOUND: 2 CRITICAL, 5 HIGH', scheduleSlots: [0, 6, 12, 18] },
+            { name: 'DOMAIN MONITOR', interval: 24, target: 'gururajputhur.in', lastRun: 'SUCCESS', detail: 'DNS: STABLE | SSL: 240 DAYS', scheduleSlots: [2] },
+            { name: 'MARKETING OS', interval: 1, target: 'Social Automations', lastRun: 'PENDING', detail: 'NEXT RUN: 17:00:00', scheduleSlots: Array.from({ length: 24 }, (_, i) => i) }
+        ];
+
+        function buildTimeline() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const nowPct = ((currentHour * 60 + currentMinute) / 1440 * 100).toFixed(1);
+
+            // Build 48 half-hour bars mapped to real schedule
+            const bars = Array.from({ length: 48 }).map((_, idx) => {
+                const halfHour = idx * 0.5;
+                const hour = Math.floor(halfHour);
+                const isPast = halfHour <= (currentHour + currentMinute / 60);
+
+                // Check if any agent was supposed to fire in this half-hour window
+                let hasScheduled = false;
+                let wasMissed = false;
+                AGENT_CONFIG.forEach(agent => {
+                    if (agent.scheduleSlots.includes(hour)) {
+                        hasScheduled = true;
+                        // If slot is in the past but agent status is PENDING, it missed
+                        if (isPast && agent.lastRun === 'PENDING') wasMissed = true;
+                    }
+                });
+
+                let color = '#222';
+                let height = 5 + Math.random() * 10;
+                if (hasScheduled && isPast) {
+                    color = wasMissed ? 'var(--danger)' : 'var(--primary)';
+                    height = 20 + Math.random() * 25;
+                } else if (hasScheduled && !isPast) {
+                    color = '#333';
+                    height = 15 + Math.random() * 15;
+                }
+
+                return `<div style="flex-grow:1; height:${height}px; background:${color}; opacity:${isPast ? 0.9 : 0.4}; transition: height 0.3s;"></div>`;
+            }).join('');
+
+            return { bars, nowPct };
+        }
+
+        function renderAgents() {
+            const { bars, nowPct } = buildTimeline();
+            const agentsPage = document.getElementById('agents');
+            agentsPage.innerHTML = `
+                  <div class="view-header"> Agents</div>
+              <div class="card animate-deploy" style="margin-bottom: 24px; padding: 15px;">
+                  <div style="font-family: var(--header-font); font-size: 10px; color: var(--primary); margin-bottom: 15px;">AGENT EXECUTION TIMELINE (24H)</div>
+                  <div style="height: 60px; border-bottom: 1px solid var(--border); position: relative; display: flex; align-items: flex-end; gap: 2px;">
+                      ${bars}
+                      <div style="position: absolute; left: ${nowPct}%; top: 0; bottom: -10px; border-left: 1px dashed var(--secondary); width: 1px;">
+                          <span style="position: absolute; top: -15px; left: 5px; font-size: 9px; color: var(--secondary);">NOW</span>
+                      </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-family: var(--header-font); font-size: 9px; color: var(--muted); margin-top: 5px;">
+                      <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+                  </div>
+              </div>
+
+              <div class="grid-layout animate-deploy">
+                  ${AGENT_CONFIG.map(a => {
+                const isSuccess = a.lastRun === 'SUCCESS';
+                const statusColor = isSuccess ? 'var(--success)' : 'var(--muted)';
+                const statusIcon = isSuccess ? '●' : '○';
+                return `
+                      <div class="card">
+                          <div class="service-status">
+                              <span style="font-family: var(--header-font); color: var(--primary);">${a.name}</span>
+                              <span style="font-size: 10px; color: var(--muted);">⏱ ${a.interval}H</span>
+                          </div>
+                          <div style="font-size: 11px; margin-bottom: 15px;">Targeting: ${a.target}</div>
+                          <div style="border-top: 1px solid var(--border); padding-top: 10px; font-family: var(--header-font); font-size: 10px;">
+                              <div style="color: ${statusColor};">${statusIcon} LAST RUN: ${a.lastRun}</div>
+                              <div style="margin-top: 4px;">${a.detail}</div>
+                          </div>
+                      </div>`;
+            }).join('')}
+              </div>
+              `;
+        }
+        // --- KEYS RENDERING ---
+        window.keysRendered = false;
+        function renderKeys() {
+            const keysPage = document.getElementById('keys');
+            keysPage.innerHTML = `
+                  <div class="view-header"> Keys</div>
+              <div class="card animate-deploy" style="margin-bottom: 24px;">
+                  <div style="font-family: var(--header-font); font-size: 10px; color: var(--primary); margin-bottom: 15px;">GLOBAL API QUOTA USAGE</div>
+                  <div style="display: flex; flex-direction: column; gap: 12px;">
+                      <div style="font-size: 12px;">
+                          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                              <span>hexamind-internal-prod</span>
+                              <span style="color: var(--muted);">UNLIMITED</span>
+                          </div>
+                          <div style="height: 4px; background: #222;"><div style="width: 15%; height: 100%; background: var(--primary);"></div></div>
+                      </div>
+                      <div style="font-size: 12px;">
+                          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                              <span>client-alpha-test</span>
+                              <span style="color: var(--muted);">412 / 1000 REQS</span>
+                          </div>
+                          <div style="height: 4px; background: #222;"><div style="width: 41%; height: 100%; background: var(--primary);"></div></div>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="card animate-deploy" style="padding: 0; overflow: hidden;">
+                  <table style="width: 100%; border-collapse: collapse; font-family: var(--header-font); font-size: 11px; text-align: left;">
+                      <thead>
+                          <tr style="background: #1a1a1a; color: var(--muted);">
+                              <th style="padding: 12px 20px; border-bottom: 1px solid var(--border);">CLIENT ID</th>
+                              <th style="padding: 12px 20px; border-bottom: 1px solid var(--border);">SCOPE</th>
+                              <th style="padding: 12px 20px; border-bottom: 1px solid var(--border);">CREATED</th>
+                              <th style="padding: 12px 20px; border-bottom: 1px solid var(--border);">STATUS</th>
+                              <th style="padding: 12px 20px; border-bottom: 1px solid var(--border);">ACTION</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                              <td style="padding: 12px 20px;">hexamind-internal-prod</td>
+                              <td style="padding: 12px 20px; color: var(--success);">full-access</td>
+                              <td style="padding: 12px 20px;">2026-04-10</td>
+                              <td style="padding: 12px 20px;"><span class="dot dot-online"></span> ACTIVE</td>
+                              <td style="padding: 12px 20px; color: var(--danger); cursor: pointer;">[REVOKE]</td>
+                          </tr>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                              <td style="padding: 12px 20px;">client-alpha-test</td>
+                              <td style="padding: 12px 20px; color: var(--primary);">recon, audit</td>
+                              <td style="padding: 12px 20px;">2026-04-18</td>
+                              <td style="padding: 12px 20px;"><span class="dot dot-online"></span> ACTIVE</td>
+                              <td style="padding: 12px 20px; color: var(--danger); cursor: pointer;">[REVOKE]</td>
+                          </tr>
+                      </tbody>
+                  </table>
+              </div>
+
+              <button onclick="this.nextElementSibling.style.display='block'; this.style.display='none'"
+                      style="margin-top: 20px; background: transparent; border: 1px dashed var(--muted); color: var(--muted); padding: 10px 20px; width: 100%; font-family: var(--header-font); cursor: pointer;">
+                  + GENERATE NEW ACCESS KEY
+              </button>
+              <div class="card animate-deploy" style="display: none; margin-top: 20px; border: 1px solid var(--primary);">
+                  <div style="font-family: var(--header-font); font-size: 10px; color: var(--primary); margin-bottom: 15px;">KEY GENERATOR</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                      <input type="text" placeholder="Client Identifier" style="background: #000; border: 1px solid var(--border); color: #fff; padding: 10px; outline: none;">
+                      <select style="background: #000; border: 1px solid var(--border); color: #fff; padding: 10px; outline: none;">
+                          <option>Scope: Read-Only</option>
+                          <option>Scope: Recon/Audit</option>
+                          <option>Scope: Full Administrative</option>
+                      </select>
+                      <button style="background: var(--primary); color: #000; border: none; padding: 10px; font-family: var(--header-font); font-weight: bold; cursor: pointer;">GENERATE & SAVE</button>
+                  </div>
+              </div>
+              `;
+        }
+
+        // --- LOGS RENDERING ---
+        window.logsRendered = false;
+        function renderLogs() {
+            const logsPage = document.getElementById('logs');
+            logsPage.innerHTML = `
+                  <div class="view-header"> Logs Archive</div>
+                      <div class="animate-deploy" style="display: flex; flex-direction: column; height: calc(100vh - 120px);">
+
+                          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                              <div class="log-pill active">all_events</div>
+                              <div class="log-pill">auth_gateway</div>
+                              <div class="log-pill">agent_runtime</div>
+                              <div class="log-pill">model_inference</div>
+                              <div style="flex-grow: 1;"></div>
+                              <div class="log-pill" style="border-color: var(--primary); color: var(--primary);">[▶ LIVE STREAM]</div>
+                              <div class="log-pill" style="border-color: var(--muted); color: var(--muted); cursor: pointer;">DOWNLOAD .LOG</div>
+                          </div>
+
+                          <div id="big-terminal" style="flex-grow: 1; background: #050505; border: 1px solid var(--border); padding: 20px; font-family: var(--header-font); font-size: 12px; overflow-y: auto; line-height: 1.6;">
+                              <div style="color: var(--success);">[2026-04-20 16:15:01] INFO: Initializing LOG_STREAM_SERVER...</div>
+                              <div style="color: var(--text);">[2026-04-20 16:15:02] GATEWAY: Incoming request from 127.0.0.1 -> /system/status</div>
+                              <div style="color: var(--text);">[2026-04-20 16:15:04] AGENT: CVE_WATCHDOG started cycle #442</div>
+                              <div style="color: var(--text);">[2026-04-20 16:15:08] LITELLM: Routing request to tinyllama:1.1b-chat...</div>
+                              <div style="color: var(--danger);">[2026-04-20 16:15:10] CRITICAL: Out-of-band domain activity detected on gururajputhur.in</div>
+                              <div style="color: var(--text);">[2026-04-20 16:15:12] AUDIT: API_KEY 'client-alpha-test' authenticated successfully.</div>
+                          </div>
+                      </div>
+
+          `;
+        }
+        // --- JARVIS TILT EFFECT ---
+        function initTiltEffect() {
+            const root = document.querySelector('.mission-control-root');
+            document.addEventListener('mousemove', (e) => {
+                const x = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+                const y = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+
+                // Subtle tilt
+                root.style.transform = `perspective(1000px) rotateY(${x * 2}deg) rotateX(${-y * 2}deg) translateZ(0)`;
+
+                // Shift background matrix too
+                const bg = document.getElementById('bg-matrix');
+                if (bg) {
+                    bg.style.transform = `translate(${x * -10}px, ${y * -10}px)`;
+                }
+            });
+        }
+        initTiltEffect();
+
+        // --- BACKGROUND MATRIX NETWORK ---
+        function initMatrixNetwork() {
+            const bg = document.getElementById('bg-matrix');
+            if (!bg) return;
+            const ctx = bg.getContext('2d');
+            bg.width = window.innerWidth;
+            bg.height = window.innerHeight;
+            let particles = [];
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: Math.random() * bg.width,
+                    y: Math.random() * bg.height,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    baseSize: Math.random() * 2 + 0.5
+                });
+            }
+            function drawMatrix() {
+                ctx.clearRect(0, 0, bg.width, bg.height);
+                ctx.fillStyle = 'rgba(232, 255, 0, 0.4)';
+                ctx.strokeStyle = 'rgba(232, 255, 0, 0.08)';
+                for (let i = 0; i < particles.length; i++) {
+                    let p = particles[i];
+                    p.x += p.vx; p.y += p.vy;
+                    if (p.x < 0 || p.x > bg.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > bg.height) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.baseSize, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    for (let j = i + 1; j < particles.length; j++) {
+                        let p2 = particles[j];
+                        let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                        if (dist < 150) {
+                            ctx.beginPath();
+                            ctx.lineWidth = 1 - (dist / 150);
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                requestAnimationFrame(drawMatrix);
+            }
+            drawMatrix();
+
+            window.addEventListener('resize', () => {
+                bg.width = window.innerWidth;
+                bg.height = window.innerHeight;
+            });
+        }
+        initMatrixNetwork();
+    </script>
+</body>
+
+</html>
