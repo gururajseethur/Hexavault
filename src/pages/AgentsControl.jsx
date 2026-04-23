@@ -13,11 +13,11 @@ import {
 } from 'lucide-react';
 
 const AGENTS = [
-  { id: 1, name: 'RESEARCH_X1', role: 'MARKET_INTELLIGENCE', status: 'active', earnings: '$4,203', load: '42%', lastTask: 'Analyzing crypto flows' },
-  { id: 2, name: 'CONTENT_GEN_A', role: 'PIPELINE_PRODUCTION', status: 'active', earnings: '$1,850', load: '89%', lastTask: 'Drafting Q2 Strategy' },
-  { id: 3, name: 'SECURITY_SENTINEL', role: 'THREAT_HUNTING', status: 'active', earnings: 'N/A', load: '12%', lastTask: 'Firewall Audit' },
-  { id: 4, name: 'LEAD_SCRAPER_PRO', role: 'REVENUE_OPS', status: 'paused', earnings: '$12,400', load: '0%', lastTask: 'LinkedIn Export' },
-  { id: 5, name: 'AUTO_OUTREACH', role: 'DISTRIBUTION', status: 'active', earnings: '$850', load: '24%', lastTask: 'Email Sequence 4' },
+  { id: 1, name: 'RESEARCH_X1', role: 'MARKET_INTELLIGENCE', status: 'active', earnings: '$4,203', load: '42%', lastTask: 'Analyzing crypto flows', displayId: crypto.randomUUID().split('-')[0].slice(0, 6).toUpperCase() },
+  { id: 2, name: 'CONTENT_GEN_A', role: 'PIPELINE_PRODUCTION', status: 'active', earnings: '$1,850', load: '89%', lastTask: 'Drafting Q2 Strategy', displayId: crypto.randomUUID().split('-')[0].slice(0, 6).toUpperCase() },
+  { id: 3, name: 'SECURITY_SENTINEL', role: 'THREAT_HUNTING', status: 'active', earnings: 'N/A', load: '12%', lastTask: 'Firewall Audit', displayId: crypto.randomUUID().split('-')[0].slice(0, 6).toUpperCase() },
+  { id: 4, name: 'LEAD_SCRAPER_PRO', role: 'REVENUE_OPS', status: 'paused', earnings: '$12,400', load: '0%', lastTask: 'LinkedIn Export', displayId: crypto.randomUUID().split('-')[0].slice(0, 6).toUpperCase() },
+  { id: 5, name: 'AUTO_OUTREACH', role: 'DISTRIBUTION', status: 'active', earnings: '$850', load: '24%', lastTask: 'Email Sequence 4', displayId: crypto.randomUUID().split('-')[0].slice(0, 6).toUpperCase() },
 ];
 
 export default function AgentsControl() {
@@ -52,7 +52,7 @@ export default function AgentsControl() {
                 <td className="px-6 py-5">
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-soft-white group-hover:text-primary transition-colors">{agent.name}</span>
-                    <span className="text-[10px] text-muted">ID: {Math.random().toString(16).slice(2, 8).toUpperCase()}</span>
+                    <span className="text-[10px] text-muted">ID: {agent.displayId}</span>
                   </div>
                 </td>
                 <td className="px-6 py-5">
