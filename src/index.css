@@ -15,7 +15,7 @@
   .glass-card {
     background: linear-gradient(145deg, rgba(13, 20, 35, 0.4) 0%, rgba(2, 6, 12, 0.6) 100%);
     @apply backdrop-blur-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.6)];
-    @apply transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] rounded-2xl; /* Sharp 2xl instead of 3rem */
+    @apply transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] rounded-2xl;
   }
 
   .glass-card:hover {
@@ -32,7 +32,7 @@
   }
 }
 
-/* Atmospheric Layering (Reduced intensity) */
+/* Atmospheric Layering & Animations */
 .nebula-vortex {
   position: fixed;
   inset: -20%;
@@ -48,6 +48,58 @@
 @keyframes rotate-nebula {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Radar Sweep Visualization */
+.radar-sweep {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 1200px;
+  height: 1200px;
+  margin-top: -600px;
+  margin-left: -600px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 70%, rgba(0, 210, 255, 0.03) 100%);
+  animation: radar 6s linear infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes radar {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Signal Sweep (Scanning Line) */
+.signal-sweep {
+  position: fixed;
+  top: -100px;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 210, 255, 0.05), transparent);
+  z-index: 3;
+  pointer-events: none;
+  animation: signalSweep 10s linear infinite;
+}
+
+@keyframes signalSweep {
+  0% { top: -150px; }
+  100% { top: 110vh; }
+}
+
+/* Glitch Effect Utility */
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); color: #00d2ff; }
+  40% { transform: translate(-1px, -1px); color: #fff; }
+  60% { transform: translate(2px, 1px); }
+  100% { transform: translate(0); }
+}
+
+.glitch-hover:hover {
+  animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
 }
 
 .grid-3d-floor {
@@ -70,6 +122,15 @@
   background-size: 100% 2px;
   z-index: 100;
   pointer-events: none;
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
