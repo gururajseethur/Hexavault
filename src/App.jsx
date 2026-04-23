@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  LayoutDashboard, Terminal, ShieldAlert, Server, Cpu, Search, Settings, Bell, Clock, Layers
+  LayoutDashboard, Terminal, ShieldAlert, Server, Cpu, Search, Settings, Bell, Clock, Layers, Users, TrendingUp
 } from 'lucide-react';
 import Overview from './pages/Overview';
 import CommandCenter from './pages/CommandCenter';
 import SecurityWarRoom from './pages/SecurityWarRoom';
 import Infrastructure from './pages/Infrastructure';
 import IntelligenceLayer from './pages/IntelligenceLayer';
+import AgentsControl from './pages/AgentsControl';
+import RevenueOps from './pages/RevenueOps';
 import SystemOverlay from './components/SystemOverlay';
 import Atmosphere from './components/Atmosphere';
 
@@ -50,6 +52,8 @@ export default function App() {
     { id: 'security', icon: ShieldAlert },
     { id: 'infrastructure', icon: Server },
     { id: 'intelligence', icon: Cpu },
+    { id: 'agents', icon: Users },
+    { id: 'revenue', icon: TrendingUp },
   ];
 
   const renderPage = () => {
@@ -59,6 +63,8 @@ export default function App() {
       case 'security': return <SecurityWarRoom />;
       case 'infrastructure': return <Infrastructure />;
       case 'intelligence': return <IntelligenceLayer />;
+      case 'agents': return <AgentsControl />;
+      case 'revenue': return <RevenueOps />;
       default: return <Overview />;
     }
   };

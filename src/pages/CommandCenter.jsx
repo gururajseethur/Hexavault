@@ -23,20 +23,38 @@ export default function CommandCenter() {
     e.preventDefault();
     if (!input.trim()) return;
     
+    const cmd = input.toUpperCase().trim();
+
+    if (cmd === 'CLEAR') {
+      setLogs([]);
+      setInput('');
+      return;
+    }
+
     const newLog = { 
       id: Date.now(), 
       type: 'user', 
-      text: `EXECUTE: ${input.toUpperCase()}` 
+      text: `EXECUTE: ${cmd}`
     };
     setLogs([...logs, newLog]);
     setInput('');
 
     // Simulate system response
     setTimeout(() => {
+      let responseText = `PROTOCOL_${cmd}_INITIALIZED... OK`;
+
+      if (cmd === 'STATUS') {
+        responseText = 'SYSTEM_STATUS: ALL_CORES_NOMINAL | SHIELD: 100% | UPLINK: STABLE';
+      } else if (cmd === 'HELP') {
+        responseText = 'AVAILABLE_COMMANDS: STATUS, CLEAR, OVERRIDE, INIT_PROTOCOL';
+      } else if (cmd === 'OVERRIDE') {
+        responseText = 'WARNING: MANUAL_OVERRIDE_ENGAGED. SAFETY_PROTOCOLS_DISABLED.';
+      }
+
       setLogs(prev => [...prev, {
         id: Date.now() + 1,
         type: 'response',
-        text: `PROTOCOL_${input.toUpperCase()}_INITIALIZED... OK`
+        text: responseText
       }]);
     }, 600);
   };
