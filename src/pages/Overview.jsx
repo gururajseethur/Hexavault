@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Zap, Shield, Cpu, Activity, Share2, Globe, TrendingUp } from 'lucide-react';
+import { DollarSign, Zap, Shield, Cpu, Activity, TrendingUp } from 'lucide-react';
 import { CircleGraph, ArchDiagram, AutomationPulse } from '../components/HUDComponents';
 
 const SlimCard = ({ icon: Icon, label, value, trend, color = "cyan" }) => (
