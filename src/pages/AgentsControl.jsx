@@ -5,7 +5,6 @@ import {
   Pause, 
   Settings2, 
   Trash2, 
-  Activity,
   Zap,
   TrendingUp,
   ExternalLink,
